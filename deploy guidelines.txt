@@ -1,0 +1,262 @@
+Deploy Guidelines SSH with TamirSSH.dll
+The library is a C# port of the JSch project from JCraft Inc. and is released under BSD style license.
+TamirSSH allows you to read/write data and transfer files over SSH channels using an API similar to JSch's API. In addition, it provides some additional wrapper classes which offer even simpler abstraction for SSH communication.
+
+First you need to do the following steps in Core Project:
+1) Search on NuGet Packages: Tamir.SSH.dll, Version 1.1.1.15
+2) Attach the .dll as reference in the core project.
+
+
+	
+
+
+
+
+
+Contents
+How to Dispose	2
+How to Execute Commands	2
+How to Initialize Process	3
+How to Read Output	4
+How to Stop Execution	5
+How to Check a SCP object	6
+How to READ/WRITE a SCP object	6
+
+
+
+
+
+
+
+
+
+
+
+
+Example code SSH Class:
+
+
+Then in the SSH class add a
+using Tamir.SharpSsh;
+
+
+After that you can add a global variable name as the example:
+SshStream ssh;
+
+How to Dispose
+You will need a dispose method to close and dispose the SSH connection 
+
+protected override void DisposeExecutable(){            
+if (ssh != null){
+    ssh.Close();
+    ssh.Dispose();
+     }
+}
+
+How to Execute Commands
+
+protected override void ExecuteCommands(string[] commands){
+bool startedRead = false;
+ssh.Flush();
+
+            foreach (string command in commands){
+                try{
+     			ssh.Write(command);
+                }
+                catch (IOException e){
+DebugWriter.Write("SSH " + ID + ": Error writing to stream. Message: " + e.Message);
+return;
+}if (!startedRead){
+                    try
+                    {
+                        result = ssh.BeginRead(data, 0, READ_BUFFER_LENGTH, cb, null);
+                        startedRead = true;
+                    }
+                    catch (IOException e)
+                    {
+DebugWriter.Write("SSH " + ID + ": Error starting asynchronous read on stream. Message: " + e.Message);
+
+return;
+                }}}
+        	}
+
+
+How to Initialize Process
+You will need to open the SSH connection
+
+
+
+
+protected override bool InitializeProcess()
+{
+   try{
+       DebugWriter.Write("SSH " + ID + ": Opening SSH stream on " + Target.Name);
+       try{
+           ssh = new SshStream(Target.Name, Target.UserName, Target.Password);
+           }
+       catch (Exception e)
+{
+DebugWriter.Write("SSH " + ID + ": Failed to open SSH stream. Message: " + e.Message);
+
+           If you need to retry SSH stream open you can follow the next steps:
+           Thread.Sleep(500);
+           ssh = new SshStream(Target.Name, Target.UserName, Target.Password);
+              }
+
+        ssh.RemoveTerminalEmulationCharacters = true;
+        if (!(ssh.CanRead && ssh.CanWrite))
+            throw new ExecutableException("Can not read and write to SSH stream");
+
+   
+        ssh.Flush();
+          }
+        catch (Exception e)
+{
+DebugWriter.Write("SSH " + ID + ": Failed to open SSH stream on " + Target.Name);
+ DebugWriter.Write("SSH " + ID + ": Exception message: " + e.Message);
+ return false;
+            			}
+
+            return true;
+   }
+
+
+
+
+
+
+
+
+
+How to Read Output
+
+If you want to read the output of the SSH connection
+
+
+private void ReadOutput(IAsyncResult result){
+
+try
+{
+       ssh.EndRead(result);
+	char[] dataBuffer;
+		lock (readDataLock)	{
+			dataBuffer = Encoding.Default.GetChars(this.data);
+			Array.Clear(this.data, 0, READ_BUFFER_LENGTH);
+			}
+
+		lock (lineBuffer)	{
+			foreach (char datum in dataBuffer)	{
+				if (!IsExecuting)		
+					return;
+					
+if (datum != '\0' && datum != '\r')						lineBuffer.Append(datum);
+
+				if (datum == '\n'){
+OutputLineReceived(HandleTerminalChars(lineBuffer.ToString()), true);
+		lineBuffer.Length = 0;
+                        	}
+    }
+ }
+
+             	if (IsExecuting && ssh.CanRead)	{
+		Thread.Sleep(READ_DELAY_MS);
+this.result = ssh.BeginRead(this.data, 0, READ_BUFFER_LENGTH, cb, null);
+               	}
+		}	
+	catch (Exception e)	
+{
+                	DebugWriter.Write("SSH, Exception message: " + e.Message);
+            	}
+        }
+
+
+
+
+
+
+
+
+
+
+
+How to Stop Execution
+
+protected override void StopExecution()
+{
+   if (ssh != null)	{
+
+	if (result != null && !result.IsCompleted && !InitializationTimeout)	{
+
+		for (int n = 0; n < SIGINT_REPEAT_COUNT; n++)	
+{
+		    	ssh.WriteByte((byte)SIGINT_CHAR_CODE);
+			Thread.Sleep(INPUT_DELAY_MS);
+			}
+
+		ssh.Flush();
+
+		try	{
+			ssh.EndRead(result);
+			}
+
+  	 	catch (Exception e)
+                   	{
+                    	 DebugWriter.Write("SSH, Exception message: " + e.Message);
+                    	}
+             	}
+
+	ssh.Seek(ssh.Length, 0);
+	ssh.Flush();
+
+	}
+}
+
+
+
+
+
+Example code ScpFileTransfer Class:
+
+
+Then in the ScpFileTransfer class add a
+using Tamir.SharpSsh;
+using Tamir.SharpSsh.jsch;
+
+
+After that you can add a global variable name as the example:
+Scp scp = null;
+
+How to Check a SCP object
+
+You will need two methods:
+Check and close.
+
+private void CheckScpObject()     {
+            CloseScp();
+            scp = new Scp(Target.Name, Target.UserName, Target.Password);
+   }
+
+
+
+ private void CloseScp()
+ {
+if (scp != null)
+       {
+         scp.Close();
+         scp = null;
+       }
+ }
+
+How to READ/WRITE a SCP object
+
+protected override Stream OpenReadStream(string fileName)
+        {
+            CheckScpObject();
+            return Scp.OpenReadStream(scp, RemotePath + "/" + fileName);
+        }
+
+protected override Stream OpenWriteStream(string fileName, long length)
+        {
+            CheckScpObject();
+            return Scp.OpenWriteStream(scp, RemotePath + "/" + fileName, length);
+        }
