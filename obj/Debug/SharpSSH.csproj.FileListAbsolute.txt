@@ -1,0 +1,9 @@
+D:\PCSD Develope\Developing\STSEE - with the old library\bin\Debug\Tamir.SharpSSH.dll
+D:\PCSD Develope\Developing\STSEE - with the old library\bin\Debug\Tamir.SharpSSH.pdb
+D:\PCSD Develope\Developing\STSEE - with the old library\SharpSSH\obj\Debug\Tamir.SharpSSH.dll
+D:\PCSD Develope\Developing\STSEE - with the old library\SharpSSH\obj\Debug\Tamir.SharpSSH.pdb
+C:\Users\dcastr5x\Desktop\bin\Debug\Tamir.SharpSSH.dll
+C:\Users\dcastr5x\Desktop\bin\Debug\Tamir.SharpSSH.pdb
+C:\Users\dcastr5x\Desktop\SharpSSH\obj\Debug\SharpSSH.csprojResolveAssemblyReference.cache
+C:\Users\dcastr5x\Desktop\SharpSSH\obj\Debug\Tamir.SharpSSH.dll
+C:\Users\dcastr5x\Desktop\SharpSSH\obj\Debug\Tamir.SharpSSH.pdb
